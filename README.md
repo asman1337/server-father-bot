@@ -262,4 +262,4 @@ We use GitHub issues to track public bugs. Report a bug by [opening a new issue]
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-Copyright (c) 2024 Asman Mirza
+Copyright (c) 2025 Asman Mirza
