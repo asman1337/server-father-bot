@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::config::Config;
 use crate::db::entities::server::Model as ServerModel;
 use crate::error::Result;
