@@ -1,0 +1,10 @@
+services:
+  bot:
+    build: .
+    volumes:
+      - ./data:/usr/local/bin/data
+    environment:
+      - TELOXIDE_TOKEN=${TELOXIDE_TOKEN}
+      - DATABASE_URL=sqlite:///usr/local/bin/data/server_father.db
+      - CHECK_INTERVAL=${CHECK_INTERVAL:-300}
+    restart: unless-stopped 
