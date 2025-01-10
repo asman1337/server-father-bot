@@ -58,6 +58,9 @@ CHECK_INTERVAL=300  # Server check interval in seconds
    ```bash
    # Create an empty database file
    sqlite3 server_father.db ".databases"
+
+   # Remove the existing database file if it exists
+   Remove-Item -Path "server_father.db" -ErrorAction SilentlyContinue
    
    # Or on Windows PowerShell
    New-Item -ItemType File -Path "server_father.db"

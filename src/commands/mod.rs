@@ -122,7 +122,7 @@ async fn receive_port(
     bot: Bot,
     dialogue: MyDialogue,
     msg: Message,
-    name: String,
+    state: State,
 ) -> Result<()> {
     let port = msg
         .text()
@@ -138,12 +138,14 @@ async fn receive_port(
         return Ok(());
     }
 
-    dialogue
-        .update(State::AwaitingServerName { host: name, port })
-        .await?;
+    if let State::AwaitingServerPort { name } = state {
+        dialogue
+            .update(State::AwaitingServerName { host: name, port })
+            .await?;
 
-    bot.send_message(msg.chat.id, "Please enter a name for this server:")
-        .await?;
+        bot.send_message(msg.chat.id, "Please enter a name for this server:")
+            .await?;
+    }
 
     Ok(())
 }
@@ -153,30 +155,32 @@ async fn receive_name(
     dialogue: MyDialogue,
     server_father: Arc<ServerFatherBot>,
     msg: Message,
-    host: String,
-    port: i32,
+    state: State,
 ) -> Result<()> {
     let name = msg.text().unwrap_or_default().to_string();
 
-    match server_father
-        .server_service()
-        .add_server(name.clone(), host.clone(), port, None)
-        .await
-    {
-        Ok(_) => {
-            bot.send_message(
-                msg.chat.id,
-                format!("✅ Server '{}' ({}) added successfully!", name, host),
-            )
-            .await?;
-        }
-        Err(e) => {
-            bot.send_message(msg.chat.id, format!("❌ Failed to add server: {}", e))
+    if let State::AwaitingServerName { host, port } = state {
+        match server_father
+            .server_service()
+            .add_server(name.clone(), host.clone(), port, None)
+            .await
+        {
+            Ok(_) => {
+                bot.send_message(
+                    msg.chat.id,
+                    format!("✅ Server '{}' ({}) added successfully!", name, host),
+                )
                 .await?;
+            }
+            Err(e) => {
+                bot.send_message(msg.chat.id, format!("❌ Failed to add server: {}", e))
+                    .await?;
+            }
         }
+
+        dialogue.update(State::Start).await?;
     }
 
-    dialogue.update(State::Start).await?;
     Ok(())
 }
 
