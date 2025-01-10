@@ -8,6 +8,7 @@ use crate::db::entities::server::Model as ServerModel;
 use crate::monitor;
 use crate::monitor::tasks;
 use std::sync::Arc;
+use crate::services::group::GroupService;
 
 #[derive(Clone)]
 pub struct ServerFatherBot {
@@ -15,22 +16,29 @@ pub struct ServerFatherBot {
     db: Database,
     config: Config,
     server_service: ServerService,
+    group_service: GroupService,
 }
 
 impl ServerFatherBot {
     pub async fn new(bot: Bot, db: Database, config: Config) -> Self {
         let server_service = ServerService::new(db.connection.clone());
+        let group_service = GroupService::new(db.connection.clone());
         
         Self { 
             bot,
             db,
             config,
             server_service,
+            group_service,
         }
     }
 
     pub fn server_service(&self) -> &ServerService {
         &self.server_service
+    }
+
+    pub fn group_service(&self) -> &GroupService {
+        &self.group_service
     }
 
     pub async fn check_server_status(&self, server: &ServerModel) -> Result<bool> {

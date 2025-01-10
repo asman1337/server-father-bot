@@ -72,4 +72,28 @@ impl ServerService {
 
         Ok(result.rows_affected > 0)
     }
+
+    pub async fn assign_to_group(&self, server_id: i32, group_id: i32) -> Result<bool> {
+        let server = server::ActiveModel {
+            id: Set(server_id),
+            group_id: Set(Some(group_id)),
+            ..Default::default()
+        };
+
+        let result = Server::update(server)
+            .exec(&self.db)
+            .await?;
+
+        Ok(result.rows_affected > 0)
+    }
+
+    pub async fn list_servers_by_group(&self, group_id: i32) -> Result<Vec<ServerModel>> {
+        let servers = Server::find()
+            .filter(server::Column::GroupId.eq(group_id))
+            .order_by_asc(server::Column::Name)
+            .all(&self.db)
+            .await?;
+
+        Ok(servers)
+    }
 } 

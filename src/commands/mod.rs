@@ -25,6 +25,11 @@ pub enum State {
         name: String,
     },
     AwaitingServerId,
+    AwaitingGroupName,
+    AwaitingGroupId,
+    AwaitingServerForGroup {
+        group_id: i32,
+    },
 }
 
 #[derive(BotCommands, Clone)]
@@ -46,6 +51,14 @@ pub enum Command {
     Status,
     #[command(description = "Start monitoring servers")]
     Monitor,
+    #[command(description = "List all groups")]
+    Groups,
+    #[command(description = "Add server to group")]
+    AddToGroup,
+    #[command(description = "Remove a group")]
+    RemoveGroup,
+    #[command(description = "Check group status")]
+    CheckGroup,
 }
 
 pub fn schema() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'static>> {
@@ -59,14 +72,24 @@ pub fn schema() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'stat
                 .branch(case![Command::Status].endpoint(status))
                 .branch(case![Command::Monitor].endpoint(start_monitoring))
                 .branch(case![Command::RemoveServer].endpoint(remove_server))
-                .branch(case![Command::Check].endpoint(check_server)),
+                .branch(case![Command::Check].endpoint(check_server))
+                .branch(case![Command::CreateGroup].endpoint(create_group))
+                .branch(case![Command::Groups].endpoint(list_groups))
+                .branch(case![Command::AddToGroup].endpoint(add_to_group))
+                .branch(case![Command::RemoveGroup].endpoint(remove_group))
+                .branch(case![Command::CheckGroup].endpoint(check_group)),
         );
 
     let message_handler = Update::filter_message()
         .branch(command_handler)
         .branch(case![State::AwaitingServerHost].endpoint(receive_host))
         .branch(case![State::AwaitingServerPort { name }].endpoint(receive_port))
-        .branch(case![State::AwaitingServerName { host, port }].endpoint(receive_name));
+        .branch(case![State::AwaitingServerName { host, port }].endpoint(receive_name))
+        .branch(case![State::AwaitingServerId].endpoint(receive_server_id))
+        .branch(case![State::AwaitingGroupName].endpoint(receive_group_name))
+        .branch(case![State::AwaitingGroupId].endpoint(receive_group_id_for_server))
+        .branch(case![State::AwaitingServerForGroup { group_id }].endpoint(receive_server_for_group))
+        .branch(case![State::AwaitingGroupId].endpoint(receive_group_id_for_removal));
 
     message_handler.endpoint(invalid_state)
 }
@@ -366,6 +389,344 @@ async fn check_server(bot: Bot, server_father: Arc<ServerFatherBot>, msg: Messag
             bot.send_message(
                 msg.chat.id,
                 format!("❌ Failed to fetch server: {}", e),
+            )
+            .await?;
+        }
+    }
+
+    Ok(())
+}
+
+async fn create_group(bot: Bot, dialogue: MyDialogue, msg: Message) -> ResponseResult<()> {
+    dialogue.update(State::AwaitingGroupName).await?;
+    
+    bot.send_message(
+        msg.chat.id,
+        "Please enter the name for the new group:",
+    )
+    .await?;
+    
+    Ok(())
+}
+
+async fn receive_group_name(
+    bot: Bot,
+    dialogue: MyDialogue,
+    server_father: Arc<ServerFatherBot>,
+    msg: Message,
+) -> ResponseResult<()> {
+    let name = msg.text().unwrap_or_default().to_string();
+
+    match server_father.group_service().create_group(name.clone()).await {
+        Ok(group) => {
+            bot.send_message(
+                msg.chat.id,
+                format!("✅ Group '{}' created successfully! (ID: {})", name, group.id),
+            )
+            .await?;
+        }
+        Err(e) => {
+            bot.send_message(
+                msg.chat.id,
+                format!("❌ Failed to create group: {}", e),
+            )
+            .await?;
+        }
+    }
+
+    dialogue.update(State::Start).await?;
+    Ok(())
+}
+
+async fn list_groups(
+    bot: Bot,
+    server_father: Arc<ServerFatherBot>,
+    msg: Message,
+) -> ResponseResult<()> {
+    match server_father.group_service().list_groups().await {
+        Ok(groups) => {
+            if groups.is_empty() {
+                bot.send_message(
+                    msg.chat.id,
+                    "No groups created yet. Use /creategroup to create one.",
+                )
+                .await?;
+                return Ok(());
+            }
+
+            let mut message = String::from("📁 *Server Groups*\n\n");
+            for group in groups {
+                let servers = server_father
+                    .server_service()
+                    .list_servers_by_group(group.id)
+                    .await?;
+
+                message.push_str(&format!(
+                    "👥 *{}* (ID: {})\nServers: {}\n\n",
+                    group.name,
+                    group.id,
+                    servers.len()
+                ));
+            }
+
+            bot.send_message(msg.chat.id, message)
+                .parse_mode(teloxide::types::ParseMode::MarkdownV2)
+                .await?;
+        }
+        Err(e) => {
+            bot.send_message(
+                msg.chat.id,
+                format!("❌ Failed to fetch groups: {}", e),
+            )
+            .await?;
+        }
+    }
+    Ok(())
+}
+
+async fn add_to_group(bot: Bot, dialogue: MyDialogue, msg: Message) -> ResponseResult<()> {
+    dialogue.update(State::AwaitingGroupId).await?;
+    
+    bot.send_message(
+        msg.chat.id,
+        "Please enter the group ID (use /groups to see group IDs):",
+    )
+    .await?;
+    
+    Ok(())
+}
+
+async fn receive_group_id_for_server(
+    bot: Bot,
+    dialogue: MyDialogue,
+    msg: Message,
+) -> ResponseResult<()> {
+    let group_id = match msg.text().and_then(|text| text.parse::<i32>().ok()) {
+        Some(id) => id,
+        None => {
+            bot.send_message(msg.chat.id, "Invalid group ID. Please enter a number.")
+                .await?;
+            return Ok(());
+        }
+    };
+
+    dialogue.update(State::AwaitingServerForGroup { group_id }).await?;
+    
+    bot.send_message(
+        msg.chat.id,
+        "Please enter the server ID to add to this group (use /status to see server IDs):",
+    )
+    .await?;
+    
+    Ok(())
+}
+
+async fn receive_server_for_group(
+    bot: Bot,
+    dialogue: MyDialogue,
+    server_father: Arc<ServerFatherBot>,
+    msg: Message,
+    group_id: i32,
+) -> ResponseResult<()> {
+    let server_id = match msg.text().and_then(|text| text.parse::<i32>().ok()) {
+        Some(id) => id,
+        None => {
+            bot.send_message(msg.chat.id, "Invalid server ID. Please enter a number.")
+                .await?;
+            return Ok(());
+        }
+    };
+
+    match server_father.server_service().get_server(server_id).await {
+        Ok(Some(server)) => {
+            match server_father.server_service().assign_to_group(server_id, group_id).await {
+                Ok(true) => {
+                    bot.send_message(
+                        msg.chat.id,
+                        format!("✅ Server '{}' added to group successfully!", server.name),
+                    )
+                    .await?;
+                }
+                Ok(false) => {
+                    bot.send_message(msg.chat.id, "❌ Failed to add server to group.")
+                        .await?;
+                }
+                Err(e) => {
+                    bot.send_message(
+                        msg.chat.id,
+                        format!("❌ Error adding server to group: {}", e),
+                    )
+                    .await?;
+                }
+            }
+        }
+        Ok(None) => {
+            bot.send_message(msg.chat.id, "❌ Server not found.")
+                .await?;
+        }
+        Err(e) => {
+            bot.send_message(
+                msg.chat.id,
+                format!("❌ Error fetching server: {}", e),
+            )
+            .await?;
+        }
+    }
+
+    dialogue.update(State::Start).await?;
+    Ok(())
+}
+
+async fn remove_group(bot: Bot, dialogue: MyDialogue, msg: Message) -> ResponseResult<()> {
+    dialogue.update(State::AwaitingGroupId).await?;
+    
+    bot.send_message(
+        msg.chat.id,
+        "Please enter the group ID to remove (use /groups to see group IDs):",
+    )
+    .await?;
+    
+    Ok(())
+}
+
+async fn receive_group_id_for_removal(
+    bot: Bot,
+    dialogue: MyDialogue,
+    server_father: Arc<ServerFatherBot>,
+    msg: Message,
+) -> ResponseResult<()> {
+    let group_id = match msg.text().and_then(|text| text.parse::<i32>().ok()) {
+        Some(id) => id,
+        None => {
+            bot.send_message(msg.chat.id, "Invalid group ID. Please enter a number.")
+                .await?;
+            return Ok(());
+        }
+    };
+
+    // First check if group exists and get its name
+    let groups = server_father.group_service().list_groups().await?;
+    let group = groups.iter().find(|g| g.id == group_id);
+
+    match group {
+        Some(group) => {
+            match server_father.group_service().delete_group(group_id).await {
+                Ok(true) => {
+                    bot.send_message(
+                        msg.chat.id,
+                        format!("✅ Group '{}' removed successfully!", group.name),
+                    )
+                    .await?;
+                }
+                Ok(false) => {
+                    bot.send_message(msg.chat.id, "❌ Group not found.")
+                        .await?;
+                }
+                Err(e) => {
+                    bot.send_message(
+                        msg.chat.id,
+                        format!("❌ Failed to remove group: {}", e),
+                    )
+                    .await?;
+                }
+            }
+        }
+        None => {
+            bot.send_message(msg.chat.id, "❌ Group not found.")
+                .await?;
+        }
+    }
+
+    dialogue.update(State::Start).await?;
+    Ok(())
+}
+
+async fn check_group(bot: Bot, server_father: Arc<ServerFatherBot>, msg: Message) -> ResponseResult<()> {
+    let args = msg.text().unwrap_or_default().split_whitespace().collect::<Vec<_>>();
+    
+    if args.len() != 2 {
+        bot.send_message(
+            msg.chat.id,
+            "Please provide a group ID (use /checkgroup <group_id>)",
+        )
+        .await?;
+        return Ok(());
+    }
+
+    let group_id = match args[1].parse::<i32>() {
+        Ok(id) => id,
+        Err(_) => {
+            bot.send_message(msg.chat.id, "Invalid group ID. Please enter a number.")
+                .await?;
+            return Ok(());
+        }
+    };
+
+    match server_father.group_service().list_groups().await {
+        Ok(groups) => {
+            let group = groups.iter().find(|g| g.id == group_id);
+            
+            match group {
+                Some(group) => {
+                    let servers = server_father
+                        .server_service()
+                        .list_servers_by_group(group_id)
+                        .await?;
+
+                    if servers.is_empty() {
+                        bot.send_message(
+                            msg.chat.id,
+                            format!("Group '{}' has no servers.", group.name),
+                        )
+                        .await?;
+                        return Ok(());
+                    }
+
+                    let mut status_message = format!("📊 *Group: {}*\n\n", group.name);
+                    let mut total_up = 0;
+
+                    for server in servers {
+                        let is_up = server_father
+                            .check_server_status(&server)
+                            .await
+                            .unwrap_or(false);
+
+                        if is_up {
+                            total_up += 1;
+                        }
+
+                        let status_emoji = if is_up { "🟢" } else { "🔴" };
+                        
+                        status_message.push_str(&format!(
+                            "{} *{}*\n`{}:{}`\n\n",
+                            status_emoji,
+                            server.name,
+                            server.host,
+                            server.port
+                        ));
+                    }
+
+                    // Add summary
+                    status_message.push_str(&format!(
+                        "Summary: {} of {} servers online",
+                        total_up,
+                        servers.len()
+                    ));
+
+                    bot.send_message(msg.chat.id, status_message)
+                        .parse_mode(teloxide::types::ParseMode::MarkdownV2)
+                        .await?;
+                }
+                None => {
+                    bot.send_message(msg.chat.id, "❌ Group not found.")
+                        .await?;
+                }
+            }
+        }
+        Err(e) => {
+            bot.send_message(
+                msg.chat.id,
+                format!("❌ Failed to fetch groups: {}", e),
             )
             .await?;
         }
