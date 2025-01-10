@@ -1,6 +1,5 @@
 use crate::bot::ServerFatherBot;
 use crate::error::{BotError, Result};
-use futures::future::join_all;
 use std::sync::Arc;
 use teloxide::{
     dispatching::{
