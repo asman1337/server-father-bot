@@ -41,6 +41,30 @@ DATABASE_URL=sqlite:./server_father.db
 CHECK_INTERVAL=300  # Server check interval in seconds
 ```
 
+### Database Setup
+1. Install SQLite if not already installed:
+   ```bash
+   # Ubuntu/Debian
+   sudo apt-get install sqlite3
+   
+   # macOS
+   brew install sqlite3
+   
+   # Windows
+   # Download from https://www.sqlite.org/download.html
+   ```
+
+2. Create the SQLite database:
+   ```bash
+   # Create an empty database file
+   sqlite3 server_father.db ".databases"
+   
+   # Or on Windows PowerShell
+   New-Item -ItemType File -Path "server_father.db"
+   ```
+
+3. The tables will be automatically created when you first run the bot.
+
 ### Build and Run
 ```bash
 # Clone the repository
@@ -87,6 +111,29 @@ src/
 ├── error/      # Error types and handling
 ├── monitor/    # Server monitoring logic
 └── services/   # Business logic services
+```
+
+## Database Schema
+```sql
+-- Servers table
+CREATE TABLE server (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR NOT NULL,
+    host VARCHAR NOT NULL,
+    port INTEGER NOT NULL,
+    group_id INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (group_id) REFERENCES server_group(id)
+);
+
+-- Groups table
+CREATE TABLE server_group (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 ```
 
 ## Contributing
