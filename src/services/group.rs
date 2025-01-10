@@ -1,6 +1,6 @@
-use sea_orm::*;
 use crate::db::entities::server_group::{self, Entity as ServerGroup, Model as ServerGroupModel};
 use crate::error::Result;
+use sea_orm::*;
 
 #[derive(Clone)]
 pub struct GroupService {
@@ -35,10 +35,8 @@ impl GroupService {
     }
 
     pub async fn delete_group(&self, id: i32) -> Result<bool> {
-        let result = ServerGroup::delete_by_id(id)
-            .exec(&self.db)
-            .await?;
+        let result = ServerGroup::delete_by_id(id).exec(&self.db).await?;
 
         Ok(result.rows_affected > 0)
     }
-} 
+}

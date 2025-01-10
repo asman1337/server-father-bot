@@ -13,4 +13,4 @@ impl MigratorTrait for Migrator {
             Box::new(m20240301_000002_create_servers::Migration),
         ]
     }
-} 
+}

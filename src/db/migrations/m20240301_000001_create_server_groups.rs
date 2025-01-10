@@ -50,4 +50,4 @@ enum ServerGroups {
     Name,
     CreatedAt,
     UpdatedAt,
-} 
+}

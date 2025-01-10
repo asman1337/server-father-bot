@@ -6,18 +6,15 @@ mod error;
 mod monitor;
 mod services;
 
-use crate::services::{
-    server::ServerService,
-    group::GroupService,
-};
 use crate::bot::ServerFatherBot;
+use crate::commands::State;
 use crate::config::Config;
 use crate::db::Database;
 use crate::error::Result;
+use crate::services::{group::GroupService, server::ServerService};
 use std::sync::Arc;
-use teloxide::prelude::*;
 use teloxide::dispatching::dialogue::InMemStorage;
-use crate::commands::State;
+use teloxide::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<()> {

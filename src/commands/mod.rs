@@ -64,8 +64,8 @@ pub enum Command {
 pub fn schema() -> UpdateHandler<BotError> {
     use dptree::case;
 
-    let command_handler = teloxide::filter_command::<Command, _>()
-        .branch(case![State::Start]
+    let command_handler = teloxide::filter_command::<Command, _>().branch(
+        case![State::Start]
             .branch(case![Command::Start].endpoint(start))
             .branch(case![Command::AddServer].endpoint(add_server))
             .branch(case![Command::Status].endpoint(status))
@@ -76,7 +76,8 @@ pub fn schema() -> UpdateHandler<BotError> {
             .branch(case![Command::Groups].endpoint(list_groups))
             .branch(case![Command::AddToGroup].endpoint(add_to_group))
             .branch(case![Command::RemoveGroup].endpoint(remove_group))
-            .branch(case![Command::CheckGroup].endpoint(check_group)));
+            .branch(case![Command::CheckGroup].endpoint(check_group)),
+    );
 
     let message_handler = Update::filter_message()
         .branch(command_handler)
@@ -86,15 +87,20 @@ pub fn schema() -> UpdateHandler<BotError> {
         .branch(case![State::AwaitingServerId].endpoint(receive_server_id))
         .branch(case![State::AwaitingGroupName].endpoint(receive_group_name))
         .branch(case![State::AwaitingGroupId].endpoint(receive_group_id_for_server))
-        .branch(case![State::AwaitingServerForGroup { group_id }].endpoint(receive_server_for_group))
+        .branch(
+            case![State::AwaitingServerForGroup { group_id }].endpoint(receive_server_for_group),
+        )
         .branch(case![State::AwaitingGroupId].endpoint(receive_group_id_for_removal));
 
     message_handler.endpoint(invalid_state)
 }
 
 async fn start(bot: Bot, msg: Message) -> Result<()> {
-    bot.send_message(msg.chat.id, "👋 Welcome to Server Father!\nI'll help you monitor your servers.")
-        .await?;
+    bot.send_message(
+        msg.chat.id,
+        "👋 Welcome to Server Father!\nI'll help you monitor your servers.",
+    )
+    .await?;
     Ok(())
 }
 
@@ -118,12 +124,7 @@ async fn receive_host(bot: Bot, dialogue: MyDialogue, msg: Message) -> Result<()
     Ok(())
 }
 
-async fn receive_port(
-    bot: Bot,
-    dialogue: MyDialogue,
-    msg: Message,
-    state: State,
-) -> Result<()> {
+async fn receive_port(bot: Bot, dialogue: MyDialogue, msg: Message, state: State) -> Result<()> {
     let port = msg
         .text()
         .and_then(|text| text.parse::<i32>().ok())
@@ -208,15 +209,22 @@ async fn status(bot: Bot, server_father: Arc<ServerFatherBot>, msg: Message) -> 
 
     // First collect all servers and their status
     for server in servers.iter() {
-        let is_up = server_father.check_server_status(server).await.unwrap_or(false);
+        let is_up = server_father
+            .check_server_status(server)
+            .await
+            .unwrap_or(false);
         status_checks.push((server, is_up));
     }
 
     // Then format the message
     for (server, is_up) in status_checks {
         let status_emoji = if is_up { "🟢" } else { "🔴" };
-        let escaped_name = server.name.replace(|c: char| "[]()~`>#+-=|{}.!".contains(c), r"\$0");
-        let escaped_host = server.host.replace(|c: char| "[]()~`>#+-=|{}.!".contains(c), r"\$0");
+        let escaped_name = server
+            .name
+            .replace(|c: char| "[]()~`>#+-=|{}.!".contains(c), r"\$0");
+        let escaped_host = server
+            .host
+            .replace(|c: char| "[]()~`>#+-=|{}.!".contains(c), r"\$0");
         status_message.push_str(&format!(
             "{} *{}* \\(ID: {}\\)\n`{}:{}`\n\n",
             status_emoji, escaped_name, server.id, escaped_host, server.port
@@ -325,11 +333,7 @@ async fn receive_server_id(
     Ok(())
 }
 
-async fn check_server(
-    bot: Bot,
-    server_father: Arc<ServerFatherBot>,
-    msg: Message,
-) -> Result<()> {
+async fn check_server(bot: Bot, server_father: Arc<ServerFatherBot>, msg: Message) -> Result<()> {
     let args = msg
         .text()
         .unwrap_or_default()
@@ -428,11 +432,7 @@ async fn receive_group_name(
     Ok(())
 }
 
-async fn list_groups(
-    bot: Bot,
-    server_father: Arc<ServerFatherBot>,
-    msg: Message,
-) -> Result<()> {
+async fn list_groups(bot: Bot, server_father: Arc<ServerFatherBot>, msg: Message) -> Result<()> {
     match server_father.group_service().list_groups().await {
         Ok(groups) => {
             if groups.is_empty() {
@@ -483,11 +483,7 @@ async fn add_to_group(bot: Bot, dialogue: MyDialogue, msg: Message) -> Result<()
     Ok(())
 }
 
-async fn receive_group_id_for_server(
-    bot: Bot,
-    dialogue: MyDialogue,
-    msg: Message,
-) -> Result<()> {
+async fn receive_group_id_for_server(bot: Bot, dialogue: MyDialogue, msg: Message) -> Result<()> {
     let group_id = match msg.text().and_then(|text| text.parse::<i32>().ok()) {
         Some(id) => id,
         None => {
@@ -624,11 +620,7 @@ async fn receive_group_id_for_removal(
     Ok(())
 }
 
-async fn check_group(
-    bot: Bot,
-    server_father: Arc<ServerFatherBot>,
-    msg: Message,
-) -> Result<()> {
+async fn check_group(bot: Bot, server_father: Arc<ServerFatherBot>, msg: Message) -> Result<()> {
     let args = msg
         .text()
         .unwrap_or_default()
@@ -698,8 +690,7 @@ async fn check_group(
                     // Add summary
                     status_message.push_str(&format!(
                         "Summary: {} of {} servers online",
-                        total_up,
-                        total_servers
+                        total_up, total_servers
                     ));
 
                     bot.send_message(msg.chat.id, status_message)

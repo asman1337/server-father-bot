@@ -1,6 +1,6 @@
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 use crate::db::entities::{prelude::*, server};
 use crate::error::Result;
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 
 #[derive(Clone)]
 pub struct ServerService {
@@ -71,4 +71,4 @@ impl ServerService {
         server.update(&self.db).await?;
         Ok(true)
     }
-} 
+}
