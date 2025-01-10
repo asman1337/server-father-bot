@@ -2,34 +2,37 @@ use std::time::Duration;
 use teloxide::prelude::*;
 use crate::error::Result;
 use crate::config::Config;
-use crate::db::Database;
-use crate::services::server::ServerService;
 use crate::db::entities::server::Model as ServerModel;
 use crate::monitor;
 use crate::monitor::tasks;
+use crate::services::server::ServerService;
 use std::sync::Arc;
 use crate::services::group::GroupService;
+use tokio::sync::Mutex;
+use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct ServerFatherBot {
-    bot: Bot,
-    db: Database,
-    config: Config,
+    pub bot: Bot,
+    pub config: Config,
     server_service: ServerService,
     group_service: GroupService,
+    chat_ids: Arc<Mutex<HashMap<i64, bool>>>,
 }
 
 impl ServerFatherBot {
-    pub async fn new(bot: Bot, db: Database, config: Config) -> Self {
-        let server_service = ServerService::new(db.connection.clone());
-        let group_service = GroupService::new(db.connection.clone());
-        
-        Self { 
+    pub fn new(
+        bot: Bot,
+        config: Config,
+        server_service: ServerService,
+        group_service: GroupService,
+    ) -> Self {
+        Self {
             bot,
-            db,
             config,
             server_service,
             group_service,
+            chat_ids: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -39,6 +42,14 @@ impl ServerFatherBot {
 
     pub fn group_service(&self) -> &GroupService {
         &self.group_service
+    }
+
+    pub fn bot(&self) -> &Bot {
+        &self.bot
+    }
+
+    pub fn config(&self) -> &Config {
+        &self.config
     }
 
     pub async fn check_server_status(&self, server: &ServerModel) -> Result<bool> {
@@ -61,6 +72,7 @@ impl ServerFatherBot {
     }
 
     pub async fn start_monitoring(&self, chat_id: ChatId) -> Result<()> {
-        tasks::start_monitoring_task(Arc::new(self.clone()), chat_id).await
+        tokio::spawn(tasks::monitor_servers(Arc::new(self.clone()), chat_id.0));
+        Ok(())
     }
 } 

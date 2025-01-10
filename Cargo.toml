@@ -16,7 +16,7 @@ sea-orm = { version = "1.1.4", features = ["sqlx-sqlite", "runtime-tokio-native-
 sea-orm-migration = "1.1.4"
 
 # Async Runtime
-tokio = { version = "1.36", features = ["full"] }
+tokio = { version = "1.36", features = ["full", "net"] }
 
 # Error Handling
 anyhow = "1.0"
@@ -30,5 +30,5 @@ dotenvy = "0.15"
 # Time handling
 chrono = "0.4"
 
-# TCP/ping checking
-tokio-ping = "0.3.0"
+# Futures
+futures = "0.3"

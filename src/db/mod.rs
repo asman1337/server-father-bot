@@ -11,7 +11,7 @@ pub struct Database {
 
 impl Database {
     pub async fn new(database_url: &str) -> Result<Self, DbErr> {
-        let connection = Database::connect(database_url).await?;
+        let connection = sea_orm::Database::connect(database_url).await?;
         
         // Run migrations
         migrations::Migrator::up(&connection, None).await?;

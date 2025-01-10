@@ -2,6 +2,7 @@ use sea_orm::*;
 use crate::db::entities::server_group::{self, Entity as ServerGroup, Model as ServerGroupModel};
 use crate::error::Result;
 
+#[derive(Clone)]
 pub struct GroupService {
     db: DatabaseConnection,
 }

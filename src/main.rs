@@ -4,48 +4,48 @@ mod config;
 mod db;
 mod error;
 mod monitor;
+mod services;
 
-use anyhow::Result;
-use teloxide::prelude::*;
-use tracing::info;
-use std::sync::Arc;
-use teloxide::{
-    dispatching::dialogue::InMemStorage,
-    prelude::*,
+use crate::services::{
+    server::ServerService,
+    group::GroupService,
 };
+use crate::bot::ServerFatherBot;
+use crate::config::Config;
+use crate::db::Database;
+use crate::error::Result;
+use std::sync::Arc;
+use teloxide::prelude::*;
+use teloxide::dispatching::dialogue::InMemStorage;
+use crate::commands::State;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Initialize logging
     tracing_subscriber::fmt::init();
-    info!("Starting Server Father Bot...");
+    tracing::info!("Starting Server Father bot...");
 
-    // Load environment variables from .env file
     dotenvy::dotenv().ok();
-    
-    // Initialize configuration
-    let config = config::Config::from_env()?;
-    
-    // Initialize database
-    let database = db::Database::new(&config.database_url).await?;
-    
-    // Get bot token from environment
+
     let bot = Bot::from_env();
-    
-    // Initialize bot instance
+    let config = Config::from_env()?;
+    let database = Database::new(&config.database_url).await?;
+
+    let server_service = ServerService::new(database.connection.clone());
+    let group_service = GroupService::new(database.connection.clone());
+
     let bot_instance = Arc::new(ServerFatherBot::new(
         bot.clone(),
-        database,
         config,
-    ).await);
+        server_service,
+        group_service,
+    ));
 
-    // Start command handler with dialogue support
     let handler = Update::filter_message()
-        .enter_dialogue::<Message, InMemStorage<commands::State>, commands::State>()
-        .dispatch_with_handler(commands::schema());
+        .enter_dialogue::<Message, InMemStorage<State>, State>()
+        .chain(commands::schema());
 
     Dispatcher::builder(bot, handler)
-        .dependencies(dptree::deps![InMemStorage::<commands::State>::new(), bot_instance])
+        .dependencies(dptree::deps![InMemStorage::<State>::new(), bot_instance])
         .enable_ctrlc_handler()
         .build()
         .dispatch()

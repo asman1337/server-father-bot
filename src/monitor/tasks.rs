@@ -1,85 +1,51 @@
-use std::sync::Arc;
-use tokio::time::{interval, Duration};
-use tracing::{info, error};
 use crate::bot::ServerFatherBot;
-use crate::error::Result;
-use teloxide::types::ChatId;
+use std::sync::Arc;
+use teloxide::{prelude::*, types::ChatId};
+use tokio::time::{sleep, Duration};
 
-pub async fn start_monitoring_task(bot: Arc<ServerFatherBot>, chat_id: ChatId) -> Result<()> {
-    let interval_secs = bot.config.check_interval;
-    info!("Starting monitoring task with interval: {}s", interval_secs);
+pub async fn monitor_servers(bot: Arc<ServerFatherBot>, chat_id: i64) {
+    let interval_secs = bot.config().check_interval;
+    let chat_id = ChatId(chat_id);
 
-    let mut interval = interval(Duration::from_secs(interval_secs));
+    loop {
+        let mut current_status = Vec::new();
 
-    tokio::spawn(async move {
-        loop {
-            interval.tick().await;
-            if let Err(e) = check_all_servers(&bot, chat_id).await {
-                error!("Error checking servers: {}", e);
+        let servers = match bot.server_service().list_servers().await {
+            Ok(servers) => servers,
+            Err(e) => {
+                let _ = bot
+                    .bot()
+                    .send_message(chat_id, format!("❌ Failed to fetch servers: {}", e))
+                    .await;
+                continue;
             }
+        };
+
+        // Check all servers and collect their status
+        for server in servers {
+            let is_up = bot.check_server_status(&server).await.unwrap_or(false);
+            current_status.push((server, is_up));
         }
-    });
 
-    Ok(())
-}
+        // Process status changes and send notifications
+        for (server, is_up) in current_status {
+            let status_text = if is_up { "🟢 Online" } else { "🔴 Offline" };
+            let message = format!(
+                "Status Change:\n{} *{}*\n`{}:{}`\nStatus: {}",
+                if is_up { "✅" } else { "❌" },
+                server.name,
+                server.host,
+                server.port,
+                status_text
+            );
 
-pub async fn check_all_servers(bot: &ServerFatherBot, chat_id: ChatId) -> Result<()> {
-    // First check all servers and collect status changes
-    let mut status_changes = Vec::new();
-    
-    // Get all servers grouped by their groups
-    let groups = bot.group_service().list_groups().await?;
-    let servers = bot.server_service().list_servers().await?;
-
-    // Check ungrouped servers
-    let ungrouped_servers: Vec<_> = servers.iter()
-        .filter(|s| s.group_id.is_none())
-        .collect();
-
-    for server in &ungrouped_servers {
-        let is_up = bot.check_server_status(server).await?;
-        if is_up != server.is_active {
-            status_changes.push((server.clone(), is_up));
+            let _ = bot
+                .bot()
+                .send_message(chat_id, message)
+                .parse_mode(teloxide::types::ParseMode::MarkdownV2)
+                .await;
         }
+
+        sleep(Duration::from_secs(interval_secs)).await;
     }
-
-    // Check grouped servers
-    for group in groups {
-        let group_servers = bot.server_service()
-            .list_servers_by_group(group.id)
-            .await?;
-
-        let mut group_changes = Vec::new();
-        
-        for server in group_servers {
-            let is_up = bot.check_server_status(&server).await?;
-            if is_up != server.is_active {
-                group_changes.push((server.clone(), is_up));
-            }
-        }
-
-        // If multiple servers in a group changed status, send a group notification
-        if group_changes.len() > 1 {
-            let mut message = format!("🔄 Status changes in group '{}':\n", group.name);
-            for (server, is_up) in &group_changes {
-                let status = if *is_up { "online" } else { "offline" };
-                message.push_str(&format!("\n{} is now {}", server.name, status));
-            }
-            bot.bot.send_message(chat_id, message).await?;
-        } else {
-            // Add single server changes to the main list
-            status_changes.extend(group_changes);
-        }
-    }
-
-    // Update database and send individual notifications for ungrouped changes
-    for (server, is_up) in status_changes {
-        bot.server_service()
-            .update_server_status(server.id, is_up)
-            .await?;
-        
-        bot.notify_status_change(&server, is_up, chat_id).await?;
-    }
-
-    Ok(())
 } 

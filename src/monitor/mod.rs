@@ -1,10 +1,16 @@
+pub mod tasks;
+
 use std::time::Duration;
 use tokio::net::TcpStream;
+use tokio::time::timeout;
 use crate::error::Result;
 
-pub async fn check_server(host: &str, port: u16, timeout: Duration) -> Result<bool> {
-    match TcpStream::connect((host, port)).await {
-        Ok(_) => Ok(true),
-        Err(_) => Ok(false),
+pub async fn check_server(host: &str, port: u16, timeout_duration: Duration) -> Result<bool> {
+    let addr = format!("{}:{}", host, port);
+    
+    match timeout(timeout_duration, TcpStream::connect(&addr)).await {
+        Ok(Ok(_)) => Ok(true),
+        Ok(Err(_)) => Ok(false),
+        Err(_) => Ok(false), // Timeout occurred
     }
 } 
