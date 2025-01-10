@@ -26,23 +26,102 @@ A Telegram bot that monitors your servers' health status, organized in groups. G
   - Real-time status notifications
   - Support for multiple chat monitoring
 
-## Setup
+## Installation
 
-### Prerequisites
-- Rust (latest stable version)
-- SQLite
+### Option 1: Using Docker (Recommended) 🐳
+
+#### A. Using Pre-built Image
+1. Pull the image from GitHub Container Registry:
+   ```bash
+   docker pull ghcr.io/asman1337/server-father-bot:latest
+   ```
+
+2. Create a `.env` file with your configuration:
+   ```env
+   TELOXIDE_TOKEN=your_telegram_bot_token
+   CHECK_INTERVAL=300  # Server check interval in seconds
+   ```
+
+3. Create a data directory for SQLite:
+   ```bash
+   mkdir data
+   ```
+
+4. Create a docker-compose.yml file:
+   ```yaml
+   version: '3.8'
+   services:
+     bot:
+       image: ghcr.io/asman1337/server-father-bot:latest
+       restart: unless-stopped
+       env_file: .env
+       volumes:
+         - ./data:/usr/local/bin/data
+   ```
+
+5. Start the bot:
+   ```bash
+   docker compose up -d
+   ```
+
+#### B. Building Locally
+
+#### Prerequisites
+- [Docker](https://docs.docker.com/get-docker/)
+- [Docker Compose](https://docs.docker.com/compose/install/)
 - Telegram Bot Token (get it from [@BotFather](https://t.me/botfather))
 
-### Environment Variables
-Create a `.env` file in the project root with:
-```env
-TELOXIDE_TOKEN=your_telegram_bot_token
-DATABASE_URL=sqlite:./server_father.db
-CHECK_INTERVAL=300  # Server check interval in seconds
+#### Steps
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/asman1337/server-father-bot
+   cd server-father-bot
+   ```
+
+2. Create a `.env` file with your configuration:
+   ```env
+   TELOXIDE_TOKEN=your_telegram_bot_token
+   CHECK_INTERVAL=300  # Server check interval in seconds
+   ```
+
+3. Create a data directory for SQLite:
+   ```bash
+   mkdir data
+   ```
+
+4. Build and start the bot:
+   ```bash
+   docker compose up -d
+   ```
+
+The bot will run in a container with:
+- SQLite database persisted in `./data` directory
+- Automatic restarts if it crashes
+- Environment variables from your `.env` file
+
+#### Docker Commands
+```bash
+# View logs
+docker compose logs -f
+
+# Stop the bot
+docker compose down
+
+# Rebuild and restart
+docker compose up -d --build
 ```
 
-### Database Setup
-1. Install SQLite if not already installed:
+### Option 2: Manual Installation
+
+#### Prerequisites
+- Rust (latest stable version)
+- SQLite
+- OpenSSL development libraries (`libssl-dev` on Ubuntu/Debian, `openssl-devel` on Fedora)
+- pkg-config
+- Telegram Bot Token (get it from [@BotFather](https://t.me/botfather))
+
+#### Steps
+1. Install SQLite:
    ```bash
    # Ubuntu/Debian
    sudo apt-get install sqlite3
@@ -59,27 +138,25 @@ CHECK_INTERVAL=300  # Server check interval in seconds
    # Create an empty database file
    sqlite3 server_father.db ".databases"
 
-   # Remove the existing database file if it exists
-   Remove-Item -Path "server_father.db" -ErrorAction SilentlyContinue
-   
    # Or on Windows PowerShell
    New-Item -ItemType File -Path "server_father.db"
    ```
 
-3. The tables will be automatically created when you first run the bot.
+3. Create a `.env` file in the project root with:
+   ```env
+   TELOXIDE_TOKEN=your_telegram_bot_token
+   DATABASE_URL=sqlite:./server_father.db
+   CHECK_INTERVAL=300  # Server check interval in seconds
+   ```
 
-### Build and Run
-```bash
-# Clone the repository
-git clone https://github.com/asman1337/server-father-bot
-cd server-father-bot
+4. Build and run:
+   ```bash
+   # Build the project
+   cargo build --release
 
-# Build the project
-cargo build --release
-
-# Run the bot
-cargo run --release
-```
+   # Run the bot
+   cargo run --release
+   ```
 
 ## Commands
 
