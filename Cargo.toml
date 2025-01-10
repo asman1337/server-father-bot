@@ -1,0 +1,34 @@
+[package]
+name = "server-father-bot"
+version = "0.1.0"
+edition = "2021"
+authors = ["Asman Mirza <asman@otmalse.com>"]
+description = "A Telegram bot that monitors your servers' health status, organized in groups. Get instant alerts when servers go down and check server status manually or automatically."
+repository = "https://github.com/asman1337/server-father-bot"
+license = "MIT"
+
+[dependencies]
+# Telegram Bot Framework
+teloxide = { version = "0.13.0", features = ["macros"] }
+
+# Database
+sea-orm = { version = "1.1.4", features = ["sqlx-sqlite", "runtime-tokio-native-tls", "macros"] }
+sea-orm-migration = "1.1.4"
+
+# Async Runtime
+tokio = { version = "1.36", features = ["full"] }
+
+# Error Handling
+anyhow = "1.0"
+thiserror = "2.0.11"
+
+# Utilities
+tracing = "0.1"
+tracing-subscriber = "0.3"
+dotenvy = "0.15"
+
+# Time handling
+chrono = "0.4"
+
+# TCP/ping checking
+tokio-ping = "0.3.0"
