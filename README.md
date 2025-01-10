@@ -1,85 +1,98 @@
-# Server Father
+# Server Father Bot 🤖
 
-A Telegram bot written in Rust that watches over your servers like a caring father. Get instant alerts when servers go down and organize them in groups for easier management.
+A Telegram bot that monitors your servers' health status, organized in groups. Get instant alerts when servers go down and check server status manually or automatically.
 
-## Core Features
+## Features
 
-### Server Management
-- Create server groups (e.g., "Production", "Development", "Databases")
-- Add/remove servers to groups
-- View all servers and their groups
+✅ Implemented:
+- Server Management
+  - Add servers with host, port, and name
+  - Remove servers
+  - List all servers with their status
+  - Check individual server status
+  - Monitor servers automatically
+  - Get instant notifications when server status changes
 
-### Health Monitoring
-- Basic health check:
-  - Server up/down status (ping/TCP)
+- Group Management
+  - Create server groups
+  - Add servers to groups
+  - Remove groups
+  - List all groups
+  - Check group status (all servers in a group)
 
-### Monitoring Methods
-1. Manual Checks
-   - Check single server status
-   - Check entire group status
-   - Refresh button for quick rechecks
+- Monitoring
+  - Automatic server status checking
+  - Configurable check intervals
+  - Real-time status notifications
+  - Support for multiple chat monitoring
 
-2. Automated Monitoring
-   - Periodic checks (configurable interval)
-   - Instant alerts on server down
-   - Group-based notifications
+## Setup
 
-### Bot Commands
+### Prerequisites
+- Rust (latest stable version)
+- SQLite
+- Telegram Bot Token (get it from [@BotFather](https://t.me/botfather))
+
+### Environment Variables
+Create a `.env` file in the project root with:
+```env
+TELOXIDE_TOKEN=your_telegram_bot_token
+DATABASE_URL=sqlite:./server_father.db
+CHECK_INTERVAL=300  # Server check interval in seconds
+```
+
+### Build and Run
+```bash
+# Clone the repository
+git clone https://github.com/asman1337/server-father-bot
+cd server-father-bot
+
+# Build the project
+cargo build --release
+
+# Run the bot
+cargo run --release
+```
+
+## Commands
+
 - `/start` - Start the bot
-- `/addserver` - Add new server
-- `/removeserver` - Remove server
-- `/creategroup` - Create server group
-- `/check` - Manual status check
-- `/setinterval` - Set check interval
+- `/addserver` - Add a new server
+- `/removeserver` - Remove a server
 - `/status` - View all servers status
-- `/checkserver <server>` - Detailed check of specific server
-- `/configure <server>` - Configure server-specific settings
+- `/check <server_id>` - Check specific server status
+- `/monitor` - Start monitoring servers
+- `/creategroup` - Create a new server group
+- `/groups` - List all groups
+- `/addtogroup` - Add server to group
+- `/removegroup` - Remove a group
+- `/checkgroup <group_id>` - Check group status
 
-## Tech Stack
-- Rust
-- teloxide (Telegram Bot Framework)
-- Sea-ORM (Database ORM)
-  - Support for SQLite, PostgreSQL, MySQL
-  - Easy database migrations
-  - Async query support
-- tokio (async runtime)
+## Technical Details
 
-## Roadmap
-### Phase 1 (Current) - Server Availability [🚧 In Progress]
-- [ ] Basic server up/down monitoring
-- [ ] Group management
-  - [ ] Create/delete groups
-  - [ ] Add/remove servers
-  - [ ] List groups and servers
-- [ ] Simple alerts
-  - [ ] Down alerts
-  - [ ] Recovery notifications
-- [ ] Basic UI/Commands
-  - [ ] Server management commands
-  - [ ] Manual check functionality
-  - [ ] Periodic check setup
+- Built with Rust 🦀
+- Uses [teloxide](https://github.com/teloxide/teloxide) for Telegram Bot API
+- [SeaORM](https://github.com/SeaQL/sea-orm) for database operations
+- SQLite for data storage
+- Asynchronous architecture with tokio
+- Clean code structure with proper error handling
 
-### Phase 2 - Enhanced Monitoring [📅 Planned]
-- [ ] Server-specific monitoring
-  - [ ] CPU usage
-  - [ ] Memory usage
-  - [ ] Disk space
-- [ ] Custom ports checking
-- [ ] SSH integration
+## Project Structure
+```
+src/
+├── bot/        # Bot core functionality
+├── commands/   # Command handlers
+├── config/     # Configuration management
+├── db/         # Database models and migrations
+├── error/      # Error types and handling
+├── monitor/    # Server monitoring logic
+└── services/   # Business logic services
+```
 
-### Phase 3 - Advanced Features [📅 Planned]
-- [ ] Detailed server metrics
-- [ ] Service status monitoring
-- [ ] Process monitoring
-- [ ] Network connection status
-- [ ] Custom alert thresholds
-- [ ] Per-server monitoring intervals
+## Contributing
 
-## Progress Legend
-- 🚧 In Progress
-- ✅ Completed
-- 📅 Planned
-- ⏸️ On Hold
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-## Development
-Requires Rust 1.84+ and Cargo
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
