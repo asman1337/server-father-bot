@@ -215,9 +215,11 @@ async fn status(bot: Bot, server_father: Arc<ServerFatherBot>, msg: Message) -> 
     // Then format the message
     for (server, is_up) in status_checks {
         let status_emoji = if is_up { "🟢" } else { "🔴" };
+        let escaped_name = server.name.replace(|c: char| "[]()~`>#+-=|{}.!".contains(c), r"\$0");
+        let escaped_host = server.host.replace(|c: char| "[]()~`>#+-=|{}.!".contains(c), r"\$0");
         status_message.push_str(&format!(
-            "{} *{}* (ID: {})\n`{}:{}`\n\n",
-            status_emoji, server.name, server.id, server.host, server.port
+            "{} *{}* \\(ID: {}\\)\n`{}:{}`\n\n",
+            status_emoji, escaped_name, server.id, escaped_host, server.port
         ));
     }
 
